@@ -10,8 +10,8 @@ from transformers.trainer_pt_utils import LabelSmoother
 
 @dataclass
 class DataArguments:
-    train_data_path: str
-    eval_data_path: str
+    train_data_path: str = field(default=None)
+    eval_data_path: str = field(default=None)
 
 
 @dataclass
@@ -128,10 +128,17 @@ def make_supervised_data_module(
 
 if __name__ == "__main__":
     parser = transformers.HfArgumentParser(
-        DataArguments,
-        ModelArguments,
-        TrainingArguments,
-
+        (
+            DataArguments,
+            ModelArguments,
+            TrainingArguments,
+            LoraArguments
+        )
     )
-    data_args = DataArguments(train_data_path="")
-    model_args = ModelArguments()
+
+    (data_args, model_args, training_args, lora_args) = parser.parse_args_into_dataclasses()
+
+    print("data_args: ", data_args)
+    print("model_args: ", model_args)
+    print("training_args: ", training_args)
+    print("lora_args: ", lora_args)
