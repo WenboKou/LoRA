@@ -1,6 +1,6 @@
 import json
-from dataclasses import dataclass
-from typing import Dict
+from dataclasses import dataclass, field
+from typing import Dict, Optional
 
 import torch
 import transformers
@@ -12,6 +12,24 @@ from transformers.trainer_pt_utils import LabelSmoother
 class DataArguments:
     train_data_path: str
     eval_data_path: str
+
+
+@dataclass
+class ModelArguments:
+    model_name_or_path: str = field(default="Qwen/Qwen2-0.5B")
+
+
+@dataclass
+class TrainingArguments(transformers.TrainingArguments):
+    cache_dir: Optional[str] = field(default=None)
+    optim: str = field(default="adamw_torch")
+    model_max_length: int = field(
+        default=64,
+        metadata={
+            "help": "Maximum sequence length."
+        }
+    )
+    use_lora: bool = False
 
 
 def preprocess(
@@ -89,3 +107,4 @@ def make_supervised_data_module(
 
 if __name__ == "__main__":
     data_args = DataArguments(train_data_path="")
+    model_args = ModelArguments()
