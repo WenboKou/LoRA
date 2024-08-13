@@ -1,3 +1,4 @@
+import json
 from typing import Dict
 
 import torch
@@ -54,3 +55,26 @@ class SupervisedDataset(Dataset):
             target_ids=self.target_ids[i],
             attention_mask=self.attention_mask[i]
         )
+
+
+def make_supervised_data_module(
+        tokenizer: transformers.PreTrainedTokenizer,
+        data_args: str,
+        max_len: int
+) -> Dict:
+    """make dataset and collator for supervised fine-tuning."""
+
+    train_data = []
+    with open(data_args.train_data_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            train_data.append(json.loads(line))
+
+    eval_data = []
+    if data_args.eval_data_path:
+        with open(data_args.eval_data_path, 'r', encoding='utf-8') as file:
+            for line in file:
+                eval_data.append(json.loads(line))
+
+    train_dataset = SupervisedDataset(train_data, tokenizer, max_len)
+    eval_dataset = SupervisedDataset(eval_data, tokenizer, max_len) if eval_data else None
+    return dict(train_dataset=train_dataset, eval_dataset=eval_dataset)
