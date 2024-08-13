@@ -1,10 +1,17 @@
 import json
+from dataclasses import dataclass
 from typing import Dict
 
 import torch
 import transformers
 from torch.utils.data import Dataset
 from transformers.trainer_pt_utils import LabelSmoother
+
+
+@dataclass
+class DataArguments:
+    train_data_path: str
+    eval_data_path: str
 
 
 def preprocess(
@@ -78,3 +85,7 @@ def make_supervised_data_module(
     train_dataset = SupervisedDataset(train_data, tokenizer, max_len)
     eval_dataset = SupervisedDataset(eval_data, tokenizer, max_len) if eval_data else None
     return dict(train_dataset=train_dataset, eval_dataset=eval_dataset)
+
+
+if __name__ == "__main__":
+    data_args = DataArguments(train_data_path="")
