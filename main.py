@@ -1,6 +1,6 @@
 import json
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import torch
 import transformers
@@ -30,6 +30,27 @@ class TrainingArguments(transformers.TrainingArguments):
         }
     )
     use_lora: bool = False
+
+
+@dataclass
+class LoraArguments:
+    lora_r: int = 64
+    lora_alpha: int = 16
+    lora_dropout: float = 0.05
+    lora_target_module: List[str] = field(
+        default_factory=lambda: [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "up_proj",
+            "gate_proj",
+            "down_proj"
+        ]
+    )
+    lora_weight_path: str = ""
+    lora_bias: str = "none"
+    q_lora: bool = False
 
 
 def preprocess(
@@ -106,5 +127,11 @@ def make_supervised_data_module(
 
 
 if __name__ == "__main__":
+    parser = transformers.HfArgumentParser(
+        DataArguments,
+        ModelArguments,
+        TrainingArguments,
+
+    )
     data_args = DataArguments(train_data_path="")
     model_args = ModelArguments()
