@@ -5,6 +5,7 @@ from typing import Dict, Optional, List
 import torch
 import transformers
 from torch.utils.data import Dataset
+from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 from transformers.trainer_pt_utils import LabelSmoother
 
 
@@ -127,18 +128,44 @@ def make_supervised_data_module(
 
 
 if __name__ == "__main__":
-    parser = transformers.HfArgumentParser(
-        (
-            DataArguments,
-            ModelArguments,
-            TrainingArguments,
-            LoraArguments
-        )
+    # parser = transformers.HfArgumentParser(
+    #     (
+    #         DataArguments,
+    #         ModelArguments,
+    #         TrainingArguments,
+    #         LoraArguments
+    #     )
+    # )
+    #
+    # (data_args, model_args, training_args, lora_args) = parser.parse_args_into_dataclasses()
+    #
+    # print("data_args: ", data_args)
+    # print("model_args: ", model_args)
+    # print("training_args: ", training_args)
+    # print("lora_args: ", lora_args)
+    training_args = TrainingArguments(output_dir="output_qwen")
+    model_args = ModelArguments()
+    lora_args = None
+
+    compute_dtype = (
+        torch.float16
+        if training_args.fp16
+        else (torch.bfloat16 if training_args.bf16 else torch.float32)
     )
 
-    (data_args, model_args, training_args, lora_args) = parser.parse_args_into_dataclasses()
+    config = transformers.AutoConfig.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir)
+    config.use_cache = False
 
-    print("data_args: ", data_args)
-    print("model_args: ", model_args)
-    print("training_args: ", training_args)
-    print("lora_args: ", lora_args)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_args.model_name_or_path,
+        config=config,
+        cache_dir=training_args.cache_dir,
+        quantization_config=BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=compute_dtype
+        ) if training_args.use_lora and lora_args.q_lora
+        else None,
+        low_cpu_mem_usage=True
+    )
