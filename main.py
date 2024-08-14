@@ -5,7 +5,7 @@ from typing import Dict, Optional, List
 import torch
 import transformers
 from torch.utils.data import Dataset
-from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, BitsAndBytesConfig, AutoTokenizer
 from transformers.trainer_pt_utils import LabelSmoother
 
 
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     # print("lora_args: ", lora_args)
     training_args = TrainingArguments(output_dir="output_qwen")
     model_args = ModelArguments()
-    lora_args = None
+    lora_args = LoraArguments()
 
     compute_dtype = (
         torch.float16
@@ -168,4 +168,12 @@ if __name__ == "__main__":
         ) if training_args.use_lora and lora_args.q_lora
         else None,
         low_cpu_mem_usage=True
+    )
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_args.model_name_or_path,
+        cache_dir=training_args.cache_dir,
+        model_max_length=training_args.model_max_length,
+        padding_side="right",
+        use_fast=False
     )
