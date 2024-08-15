@@ -4,8 +4,9 @@ from typing import Dict, Optional, List
 
 import torch
 import transformers
+from peft import LoraConfig, get_peft_model, get_peft_model_state_dict
 from torch.utils.data import Dataset
-from transformers import AutoModelForCausalLM, BitsAndBytesConfig, AutoTokenizer
+from transformers import AutoModelForCausalLM, BitsAndBytesConfig, AutoTokenizer, Trainer
 from transformers.trainer_pt_utils import LabelSmoother
 
 
@@ -38,7 +39,7 @@ class LoraArguments:
     lora_r: int = 64
     lora_alpha: int = 16
     lora_dropout: float = 0.05
-    lora_target_module: List[str] = field(
+    lora_target_modules: List[str] = field(
         default_factory=lambda: [
             "q_proj",
             "k_proj",
@@ -143,9 +144,26 @@ if __name__ == "__main__":
     # print("model_args: ", model_args)
     # print("training_args: ", training_args)
     # print("lora_args: ", lora_args)
-    training_args = TrainingArguments(output_dir="output_qwen")
+    training_args = TrainingArguments(
+        output_dir="output_qwen",
+        bf16=True,
+        learning_rate=3e-4,
+        weight_decay=0.01,
+        adam_beta2=0.95,
+        warmup_ratio=0.01,
+        num_train_epochs=1,
+        lr_scheduler_type="cosine",
+        logging_steps=1,
+        per_device_train_batch_size=2,
+        gradient_accumulation_steps=8,
+        save_strategy="steps",
+        save_steps=10,
+        save_total_limit=10,
+        report_to="none"
+    )
     model_args = ModelArguments()
     lora_args = LoraArguments()
+    data_args = DataArguments(train_data_path="data.jsonl")
 
     compute_dtype = (
         torch.float16
@@ -177,3 +195,27 @@ if __name__ == "__main__":
         padding_side="right",
         use_fast=False
     )
+
+    if training_args.use_lora:
+        lora_config = LoraConfig(
+            r=lora_args.lora_r,
+            lora_alpha=lora_args.lora_alpha,
+            target_modules=lora_args.lora_target_modules,
+            lora_dropout=lora_args.lora_dropout,
+            bias=lora_args.lora_bias,
+            task_type="CAUSAL_LM"
+        )
+
+        model = get_peft_model(model, lora_config)
+
+        model.print_trainable_parameters()
+
+        data_module = make_supervised_data_module(tokenizer, data_args, training_args.model_max_length)
+
+        trainer = Trainer(model=model, tokenizer=tokenizer, training_args=training_args, **data_module)
+
+        trainer.train()
+
+        trainer.save_state()
+
+        # TODO: 保存模型
